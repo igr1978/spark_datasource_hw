@@ -8,7 +8,7 @@ import org.apache.spark.sql.connector.write.{BatchWrite, DataWriter, DataWriterF
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
-import java.sql.{DriverManager, ResultSet}
+import java.sql.{DriverManager}
 import java.util
 import scala.collection.JavaConverters._
 
@@ -20,7 +20,7 @@ class DefaultSource extends TableProvider {
     schema: StructType,
     partitioning: Array[Transform],
     properties: util.Map[String, String]
-  ): Table = new PostgresTable(properties.get("tableName")) // TODO: Error handling
+  ): Table = new PostgresTable(properties.get("tableName"))
 }
 
 class PostgresTable(val name: String) extends SupportsRead with SupportsWrite {
@@ -45,7 +45,6 @@ case class ConnectionProperties(url: String, user: String, password: String, tab
 /** Read */
 class PostgresScanBuilder(val options: CaseInsensitiveStringMap) extends ScanBuilder {
   val partitionSize = options.getInt("partitionSize", 1)
-//  val numPartitions = options.getInt("numPartitions", 1)
   override def build(): Scan = new PostgresScan(partitionSize, ConnectionProperties(
     options.get("url"), options.get("user"), options.get("password"), options.get("tableName")))
 }
@@ -53,7 +52,6 @@ class PostgresScanBuilder(val options: CaseInsensitiveStringMap) extends ScanBui
 class PostgresPartition(val start:Int, val end:Int) extends InputPartition
 
 class PostgresScan(val partitionSize: Int, val connectionProperties: ConnectionProperties) extends Scan with Batch{
-//  require(numPartitions > 0, "Number of partitions must be positive")
   require(partitionSize > 0, "Size of partitions must be positive")
 
   override def readSchema(): StructType = PostgresTable.schema
@@ -74,29 +72,12 @@ class PostgresScan(val partitionSize: Int, val connectionProperties: ConnectionP
 
     val numPartitions = Math.max(Math.round(rowsCount / partitionSize), 1).toInt
     numPartitions
-
   }
 
-
-//  def createDataReaderFactories = {
-//    val numPartitions = 10
-//    val partitionList = new java.util.ArrayList[InputPartition]
-//    for (i <- 0 to numPartitions) {
-//      val start = i * partitionSize
-//      val end = start + partitionSize
-//
-//      partitionList.add(new PostgresPartition(start, end))
-//    }
-//    partitionList.asScala.toArray
-//  }
-
   override def planInputPartitions(): Array[InputPartition] = {
-//    val numPartitions = options.getInt("numPartitions", 1)
-
-//    Array(new PostgresPartition(0,4),
-//      new PostgresPartition(5,9))
-
     val numPartitions = getNumberPartitions
+    require(numPartitions > 0, "Number of partitions must be positive")
+
     val partitionList = new java.util.ArrayList[InputPartition]
     for (i <- 0 to numPartitions) {
       val start = i * partitionSize
@@ -105,7 +86,6 @@ class PostgresScan(val partitionSize: Int, val connectionProperties: ConnectionP
       partitionList.add(new PostgresPartition(start, end))
     }
     partitionList.asScala.toArray
-
   }
 
   override def createReaderFactory(): PartitionReaderFactory = {
@@ -125,11 +105,10 @@ class PostgresPartitionReader(postgresPartition: PostgresPartition, connectionPr
     connectionProperties.url, connectionProperties.user, connectionProperties.password
   )
 
-  private val statement = connection.createStatement()
-
   var start = postgresPartition.start
   var limit = postgresPartition.end - start
 
+  private val statement = connection.createStatement()
   private val resultSet = statement.executeQuery(s"select * from ${connectionProperties.tableName} order by user_id limit ${limit} offset ${start}")
 
   override def next(): Boolean = resultSet.next()

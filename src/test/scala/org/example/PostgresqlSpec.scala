@@ -16,7 +16,6 @@ class PostgresqlSpec extends AnyFlatSpec with TestContainerForAll {
   override val containerDef = PostgreSQLContainer.Def("postgres")
 
   val testTableName = "users"
-  val numPartitions = 10
   val partitionSize = 10
 
   "PostgreSQL data source" should "read table" in withContainers { postgresServer =>
@@ -33,7 +32,6 @@ class PostgresqlSpec extends AnyFlatSpec with TestContainerForAll {
       .option("user", postgresServer.username)
       .option("password", postgresServer.password)
       .option("tableName", testTableName)
-      .option("numPartitions", numPartitions)
       .option("partitionSize", partitionSize)
       .load()
 //      .withColumn("partition_id", spark_partition_id())
@@ -41,7 +39,7 @@ class PostgresqlSpec extends AnyFlatSpec with TestContainerForAll {
       .withColumn("partition_id", spark_partition_id)
       .groupBy("partition_id").count
       .orderBy("partition_id")
-      .show(100,false)
+      .show(false)
 
     spark.stop()
   }
@@ -90,18 +88,6 @@ class PostgresqlSpec extends AnyFlatSpec with TestContainerForAll {
       }
     }
   }
-//  override def beforeContainersStop (container: Containers): Unit = {
-//    super.beforeContainersStop(container)
-//    container match {
-//      case _: PostgreSQLContainer => {
-//        Class.forName(container.driverClassName)
-//
-//        val conn = DriverManager.getConnection(container.jdbcUrl, container.username, container.password)
-////        conn.createStatement.execute(s"drop schema if exists $schema cascade;")
-//        conn.close()
-//      }
-//    }
-//  }
 
   def connection(c: PostgreSQLContainer) = {
     Class.forName(c.driverClassName)
