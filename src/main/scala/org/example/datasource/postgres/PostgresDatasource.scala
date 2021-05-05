@@ -65,7 +65,7 @@ class PostgresScan(val partitionSize: Int, val connectionProperties: ConnectionP
     )
 
     val statement = connection.createStatement
-    val resultSet = statement.executeQuery(s"SELECT count(*) FROM $tableName;") //.getInt(0)
+    val resultSet = statement.executeQuery(s"SELECT count(*) FROM $tableName;")
     resultSet.next()
     val rowsCount = resultSet.getLong(1)
     connection.close()
